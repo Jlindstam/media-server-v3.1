@@ -1,0 +1,56 @@
+# Copied next to docker-compose.yml by install.sh when VPN_MODE=on.
+# qBittorrent and TorLink++ share Gluetun's network, so all their traffic goes through the VPN.
+services:
+  gluetun:
+    image: ${GLUETUN_IMAGE:?set GLUETUN_IMAGE in versions.env}
+    container_name: gluetun
+    cap_add: [NET_ADMIN]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks: [media]
+    ports:
+      - "8080:8080"      # qBittorrent Web UI (runs inside Gluetun's network)
+      - "19117:9117"     # TorLink++ (runs inside Gluetun's network)
+    volumes:
+      - ${MEDIA}/gluetun/wireguard/wg0.conf:/gluetun/wireguard/wg0.conf:ro
+      - ${MEDIA}/gluetun/qb-port-up.sh:/gluetun/qb-port-up.sh:ro
+      - ${MEDIA}/gluetun/qb-port-down.sh:/gluetun/qb-port-down.sh:ro
+    environment:
+      - TZ=${TZ}
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      - "VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh /gluetun/qb-port-up.sh {{PORT}} {{VPN_INTERFACE}}"
+      - "VPN_PORT_FORWARDING_DOWN_COMMAND=/bin/sh /gluetun/qb-port-down.sh"
+    restart: unless-stopped
+
+  qbittorrent:
+    image: ${QBITTORRENT_IMAGE:?set QBITTORRENT_IMAGE in versions.env}
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ${MEDIA}/qbittorrent/config:/config
+      - ${MEDIA}:/data
+    restart: unless-stopped
+
+  torlink:
+    image: ${TORLINK_IMAGE:?set TORLINK_IMAGE in versions.env}
+    container_name: torlink
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    volumes:
+      - ${MEDIA}/torlink/downloads:/downloads
+    restart: unless-stopped

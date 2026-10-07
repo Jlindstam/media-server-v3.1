@@ -1,0 +1,8 @@
+# Copied next to docker-compose.yml by install.sh only when /dev/dri exists
+# (Intel Quick Sync / VAAPI). Gives Jellyfin access to the GPU render device.
+services:
+  jellyfin:
+    group_add:
+      - "${RENDER_GID}"
+    devices:
+      - /dev/dri:/dev/dri

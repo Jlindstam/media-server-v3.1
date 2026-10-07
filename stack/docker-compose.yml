@@ -1,0 +1,63 @@
+# Managed by install.sh. Core services; install.sh adds the VPN or no-VPN downloader file next to it.
+# Put local changes in docker-compose.override.yml instead.
+name: media-stack
+
+networks:
+  media:
+    name: media
+
+services:
+  jellyfin:
+    image: ${JELLYFIN_IMAGE:?set JELLYFIN_IMAGE in versions.env}
+    container_name: jellyfin
+    user: "${PUID}:${PGID}"
+    networks: [media]
+    ports:
+      - "8096:8096"
+    volumes:
+      - ${MEDIA}/jellyfin/config:/config
+      - ${MEDIA}/jellyfin/cache:/cache
+      - ${MEDIA}/Jellyfin:/media
+    restart: unless-stopped
+
+  seerr:
+    image: ${SEERR_IMAGE:?set SEERR_IMAGE in versions.env}
+    container_name: seerr
+    init: true
+    user: "${PUID}:${PGID}"
+    networks: [media]
+    ports:
+      - "5055:5055"
+    volumes:
+      - ${MEDIA}/seerr/config:/app/config
+    restart: unless-stopped
+
+  radarr:
+    image: ${RADARR_IMAGE:?set RADARR_IMAGE in versions.env}
+    container_name: radarr
+    networks: [media]
+    ports:
+      - "7878:7878"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${MEDIA}/radarr/config:/config
+      - ${MEDIA}:/data
+    restart: unless-stopped
+
+  sonarr:
+    image: ${SONARR_IMAGE:?set SONARR_IMAGE in versions.env}
+    container_name: sonarr
+    networks: [media]
+    ports:
+      - "8989:8989"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${MEDIA}/sonarr/config:/config
+      - ${MEDIA}:/data
+    restart: unless-stopped

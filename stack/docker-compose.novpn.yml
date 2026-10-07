@@ -1,0 +1,31 @@
+# Copied next to docker-compose.yml by install.sh when VPN_MODE=off.
+# WARNING: torrent traffic leaves through your normal home connection (your real IP is visible to peers).
+services:
+  qbittorrent:
+    image: ${QBITTORRENT_IMAGE:?set QBITTORRENT_IMAGE in versions.env}
+    container_name: qbittorrent
+    networks: [media]
+    ports:
+      - "8080:8080"        # Web UI
+      - "6881:6881"        # torrent traffic (forward on your router for best speeds)
+      - "6881:6881/udp"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881
+    volumes:
+      - ${MEDIA}/qbittorrent/config:/config
+      - ${MEDIA}:/data
+    restart: unless-stopped
+
+  torlink:
+    image: ${TORLINK_IMAGE:?set TORLINK_IMAGE in versions.env}
+    container_name: torlink
+    networks: [media]
+    ports:
+      - "19117:9117"
+    volumes:
+      - ${MEDIA}/torlink/downloads:/downloads
+    restart: unless-stopped
